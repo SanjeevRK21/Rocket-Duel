@@ -1,0 +1,167 @@
+I have an existing Python geometry engine that includes:
+
+orientation()
+
+segments_intersect()
+
+distance()
+
+reroute logic
+
+obstacle handling
+
+I want to convert this into a 2-player real-time pygame game with the following design:
+
+🎮 GAME TITLE: Rocket Duel – Architect vs Pilot
+
+🧠 OVERVIEW:
+
+This will be a 2-player competitive game.
+
+PLAYER 1 = Architect
+PLAYER 2 = Rocket Pilot
+
+The game has 3 states:
+
+DESIGN MODE
+
+PLAY MODE
+
+RESULT SCREEN
+
+🟢 PHASE 1 – DESIGN MODE (Player 1)
+
+Player 1 uses mouse to:
+
+Click to set START point
+
+Click to set GOAL point
+
+Click + drag to draw obstacle line segments
+
+Press ENTER to switch to Play Mode
+
+Requirements:
+
+Obstacles must be stored as line segments [(x1,y1),(x2,y2)]
+
+Use my existing segments_intersect() function for geometry logic
+
+Draw obstacles visually
+
+Prevent invalid obstacles (zero length)
+
+Display instructions on screen
+
+🚀 PHASE 2 – PLAY MODE (Player 2)
+
+Player 2 controls a rocket with physics.
+
+Rocket properties:
+
+position (x, y)
+
+velocity
+
+acceleration
+
+max speed
+
+fuel (optional advanced feature)
+
+Controls:
+
+UP arrow → move rocket upward
+DOWN arrow → move rocket downward
+RIGHT arrow → increase speed
+LEFT arrow → decrease speed
+
+Mechanics:
+
+Rocket moves continuously toward goal direction
+
+Player adjusts vertical movement and speed
+
+If rocket touches obstacle → crash
+
+If rocket reaches goal → win
+
+Collision detection:
+
+Use existing geometry logic
+
+Detect if rocket path intersects any obstacle segment
+
+Treat rocket as a small circle (radius-based collision)
+
+⏱ SCORING SYSTEM:
+
+Score = Time taken to reach goal
+
+Optional penalties:
+
+Collision = instant loss
+
+Excessive speed = harder to control
+
+📦 TECHNICAL REQUIREMENTS:
+
+Use pygame
+
+Maintain clean architecture
+
+Separate files:
+
+main.py
+geometry.py (reuse my math logic)
+design_mode.py
+play_mode.py
+rocket.py
+
+Implement proper game loop:
+
+handle_input()
+
+update()
+
+render()
+
+Use clear state management:
+game_state = "DESIGN" / "PLAY" / "RESULT"
+
+🎨 VISUALS:
+
+Dark background
+
+Obstacles in purple
+
+Start point in green
+
+Goal point in red
+
+Rocket in white
+
+Display current speed and time
+
+⚙ IMPORTANT:
+
+Do NOT remove my geometry logic.
+
+Reuse orientation() and segments_intersect().
+
+Convert my plotting logic to pygame rendering.
+
+No CLI input.
+
+Everything must be mouse/keyboard based.
+
+The game must run in real time.
+
+🎯 GOAL:
+
+Create a playable local multiplayer game where:
+
+Player 1 designs a tricky obstacle course
+Player 2 tries to fly through it as fast as possible
+
+Provide complete working pygame code.
