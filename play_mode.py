@@ -58,33 +58,63 @@ class PlayMode:
                     return
 
     def draw(self, surface):
-        surface.fill((20, 20, 20))
+        surface.fill((5, 5, 20)) # Very dark space
 
+        # Stars
+        for i in range(30):
+            x = (i * 137 + 50) % surface.get_width()
+            y = (i * 563 + 50) % surface.get_height()
+            pygame.draw.circle(surface, (80, 80, 120), (x, y), 1)
+
+        # Draw Goal glow
+        glow_size = int(15 + math.sin(time.time() * 5) * 5)
+        pygame.draw.circle(surface, (100, 0, 0), self.goal_point, glow_size + 5)
+        pygame.draw.circle(surface, (255, 0, 0), self.goal_point, 10)
+        pygame.draw.circle(surface, (255, 255, 255), self.goal_point, 12, 1)
+
+        # Draw Start
+        pygame.draw.circle(surface, (0, 100, 0), self.start_point, 15)
         pygame.draw.circle(surface, (0, 255, 0), self.start_point, 8)
-        pygame.draw.circle(surface, (255, 0, 0), self.goal_point, 8)
 
         for obs in self.obstacles:
-            pygame.draw.line(surface, (128, 0, 128), obs[0], obs[1], 4)
+            pygame.draw.line(surface, (180, 50, 255), obs[0], obs[1], 4)
+            # Add neon glow to obstacles
+            pygame.draw.line(surface, (100, 0, 150), obs[0], obs[1], 8, 1)
 
         if self.status != "LOSS":
             self.rocket.draw(surface)
 
         current_time = self.end_time if self.status != "PLAYING" else (time.time() - self.start_time)
         
+        # HUD Panel
+        hud_rect = pygame.Rect(10, 10, 220, 110)
+        pygame.draw.rect(surface, (20, 20, 40, 180), hud_rect, border_radius=5)
+        pygame.draw.rect(surface, (100, 100, 200), hud_rect, 1, border_radius=5)
+
         info_texts = [
-            f"Time: {current_time:.2f}s",
-            f"Speed: {self.rocket.speed:.1f}",
-            "UP/DOWN: Move vertically",
-            "RIGHT/LEFT: Change speed"
+            f"TIME: {current_time:.2f}s",
+            f"SPEED: {self.rocket.speed:.1f}",
+            "UP/DOWN: Vertical",
+            "L/R: Speed"
         ]
         
         for i, text in enumerate(info_texts):
-            img = self.font.render(text, True, (255, 255, 255))
-            surface.blit(img, (10, 10 + i * 25))
+            img = self.font.render(text, True, (0, 255, 255))
+            surface.blit(img, (20, 20 + i * 22))
 
         if self.status == "WIN":
-            msg = self.font.render(f"YOU WIN in {current_time:.2f}s! Press ENTER to design again.", True, (0, 255, 0))
-            surface.blit(msg, (surface.get_width()//2 - msg.get_width()//2, surface.get_height()//2))
+            overlay = pygame.Surface((surface.get_width(), surface.get_height()), pygame.SRCALPHA)
+            overlay.fill((0, 50, 0, 150))
+            surface.blit(overlay, (0, 0))
+            msg = self.font.render(f"MISSION SUCCESS! Time: {current_time:.2f}s", True, (255, 255, 255))
+            hint = self.font.render("Press ENTER to return to Architect Mode", True, (200, 255, 200))
+            surface.blit(msg, (surface.get_width()//2 - msg.get_width()//2, surface.get_height()//2 - 20))
+            surface.blit(hint, (surface.get_width()//2 - hint.get_width()//2, surface.get_height()//2 + 20))
         elif self.status == "LOSS":
-            msg = self.font.render("CRASHED! Press ENTER to design again.", True, (255, 0, 0))
-            surface.blit(msg, (surface.get_width()//2 - msg.get_width()//2, surface.get_height()//2))
+            overlay = pygame.Surface((surface.get_width(), surface.get_height()), pygame.SRCALPHA)
+            overlay.fill((50, 0, 0, 150))
+            surface.blit(overlay, (0, 0))
+            msg = self.font.render("CRITICAL FAILURE - Rocket Destroyed", True, (255, 100, 100))
+            hint = self.font.render("Press ENTER to Try Again", True, (255, 200, 200))
+            surface.blit(msg, (surface.get_width()//2 - msg.get_width()//2, surface.get_height()//2 - 20))
+            surface.blit(hint, (surface.get_width()//2 - hint.get_width()//2, surface.get_height()//2 + 20))
