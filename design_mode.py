@@ -47,6 +47,7 @@ class DesignMode:
         # Stars
         for x, y, size in self.stars:
             brightness = int(150 + 105 * math.sin(pygame.time.get_ticks() * 0.001 * size))
+            brightness = max(0, min(255, brightness)) # Clamp color values
             pygame.draw.circle(surface, (brightness, brightness, brightness), (x, y), 1 if size < 0.8 else 2)
 
         # UI Overlay
