@@ -1,5 +1,7 @@
 import pygame
 import time
+import math
+import random
 from rocket import Rocket
 from geometry import segments_intersect, distance
 
@@ -10,9 +12,15 @@ class PlayMode:
         self.obstacles = obstacles
         self.rocket = Rocket(start_point[0], start_point[1])
         self.start_time = time.time()
-        self.font = pygame.font.SysFont(None, 24)
+        try:
+            self.font_hud = pygame.font.SysFont("monospace", 20, bold=True)
+            self.font_msg = pygame.font.SysFont("Arial", 36, bold=True)
+        except:
+            self.font_hud = pygame.font.SysFont(None, 20)
+            self.font_msg = pygame.font.SysFont(None, 36)
         self.status = "PLAYING" # PLAYING, WIN, LOSS
         self.end_time = 0
+        self.stars = [(random.randint(0, 800), random.randint(0, 600), random.random()) for _ in range(100)]
 
     def handle_event(self, event):
         if self.status != "PLAYING":
@@ -47,7 +55,7 @@ class PlayMode:
             ((new_x+r, new_y-r), (new_x+r, new_y+r)),
             ((new_x+r, new_y+r), (new_x-r, new_y+r)),
             ((new_x-r, new_y+r), (new_x-r, new_y-r)),
-            ((old_x, old_y), (new_x, new_y)) # Catch fast movements skipping through lines
+            ((old_x, old_y), (new_x, new_y))
         ]
 
         for obs in self.obstacles:
@@ -58,33 +66,54 @@ class PlayMode:
                     return
 
     def draw(self, surface):
-        surface.fill((20, 20, 20))
+        surface.fill((2, 2, 10)) # Very dark space
 
-        pygame.draw.circle(surface, (0, 255, 0), self.start_point, 8)
-        pygame.draw.circle(surface, (255, 0, 0), self.goal_point, 8)
+        # Stars
+        for x, y, size in self.stars:
+            brightness = int(100 + 155 * math.sin(pygame.time.get_ticks() * 0.001 * size))
+            pygame.draw.circle(surface, (brightness, brightness, brightness), (x, y), 1 if size < 0.8 else 2)
 
+        # Markers
+        # Start
+        pygame.draw.circle(surface, (0, 255, 100), self.start_point, 6)
+        # Goal
+        pulse = (math.cos(pygame.time.get_ticks() * 0.01) + 1) * 2
+        pygame.draw.circle(surface, (255, 50, 50), self.goal_point, 12 + pulse, 2)
+        pygame.draw.circle(surface, (255, 50, 50), self.goal_point, 6)
+
+        # Obstacles
         for obs in self.obstacles:
-            pygame.draw.line(surface, (128, 0, 128), obs[0], obs[1], 4)
+            pygame.draw.line(surface, (100, 0, 150), obs[0], obs[1], 6)
+            pygame.draw.line(surface, (200, 100, 255), obs[0], obs[1], 2)
 
         if self.status != "LOSS":
             self.rocket.draw(surface)
 
+        # HUD
         current_time = self.end_time if self.status != "PLAYING" else (time.time() - self.start_time)
         
-        info_texts = [
-            f"Time: {current_time:.2f}s",
-            f"Speed: {self.rocket.speed:.1f}",
-            "UP/DOWN: Move vertically",
-            "RIGHT/LEFT: Change speed"
-        ]
-        
-        for i, text in enumerate(info_texts):
-            img = self.font.render(text, True, (255, 255, 255))
-            surface.blit(img, (10, 10 + i * 25))
+        hud_bg = pygame.Surface((200, 100), pygame.SRCALPHA)
+        pygame.draw.rect(hud_bg, (0, 0, 0, 150), (0, 0, 200, 100), border_radius=10)
+        surface.blit(hud_bg, (10, 10))
+
+        time_txt = self.font_hud.render(f"TIME:  {current_time:.2f}s", True, (0, 255, 255))
+        speed_txt = self.font_hud.render(f"SPEED: {self.rocket.speed:.1f}", True, (255, 255, 0))
+        surface.blit(time_txt, (25, 25))
+        surface.blit(speed_txt, (25, 55))
 
         if self.status == "WIN":
-            msg = self.font.render(f"YOU WIN in {current_time:.2f}s! Press ENTER to design again.", True, (0, 255, 0))
-            surface.blit(msg, (surface.get_width()//2 - msg.get_width()//2, surface.get_height()//2))
+            overlay = pygame.Surface((800, 600), pygame.SRCALPHA)
+            overlay.fill((0, 255, 0, 40))
+            surface.blit(overlay, (0,0))
+            msg = self.font_msg.render("MISSION ACCOMPLISHED", True, (0, 255, 100))
+            sub = self.font_hud.render(f"TIME: {current_time:.2f}s | PRESS ENTER TO REPLAY", True, (255, 255, 255))
+            surface.blit(msg, (400 - msg.get_width()//2, 250))
+            surface.blit(sub, (400 - sub.get_width()//2, 310))
         elif self.status == "LOSS":
-            msg = self.font.render("CRASHED! Press ENTER to design again.", True, (255, 0, 0))
-            surface.blit(msg, (surface.get_width()//2 - msg.get_width()//2, surface.get_height()//2))
+            overlay = pygame.Surface((800, 600), pygame.SRCALPHA)
+            overlay.fill((255, 0, 0, 40))
+            surface.blit(overlay, (0,0))
+            msg = self.font_msg.render("CRITICAL COLLISION", True, (255, 50, 50))
+            sub = self.font_hud.render("PILOT LOST | PRESS ENTER TO RETRY", True, (255, 255, 255))
+            surface.blit(msg, (400 - msg.get_width()//2, 250))
+            surface.blit(sub, (400 - sub.get_width()//2, 310))
