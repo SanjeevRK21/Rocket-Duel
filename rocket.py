@@ -12,6 +12,7 @@ class Rocket:
         self.color = (255, 255, 255)
         self.angle = 0
         self.particles = []
+        self.path_taken = [(float(x), float(y))] # Trace path
 
     def update(self, goal_pos, dt):
         dx = goal_pos[0] - self.x
@@ -28,6 +29,10 @@ class Rocket:
         # Automatic forward movement toward goal based on speed
         self.x += dir_x * self.speed
         self.y += dir_y * self.speed
+        
+        # Track path if moved significantly
+        if distance((self.x, self.y), self.path_taken[-1]) > 2:
+            self.path_taken.append((self.x, self.y))
 
         # Player vertical adjustments and speed control
         keys = pygame.key.get_pressed()
@@ -47,7 +52,6 @@ class Rocket:
         # Particle logic (visual only)
         if self.speed > 0.5:
             for _ in range(int(self.speed)):
-                # Emit behind rocket
                 px = self.x - dir_x * 12 + random.uniform(-3, 3)
                 py = self.y - dir_y * 12 + random.uniform(-3, 3)
                 self.particles.append({
@@ -65,6 +69,10 @@ class Rocket:
                 self.particles.remove(p)
 
     def draw(self, surface):
+        # Draw path trace
+        if len(self.path_taken) > 1:
+            pygame.draw.lines(surface, (0, 255, 255), False, self.path_taken, 1)
+
         # Draw particles
         for p in self.particles:
             alpha = int(p["life"] * 255)
@@ -72,11 +80,13 @@ class Rocket:
             pygame.draw.circle(s, (*p["color"], alpha), (2, 2), 2)
             surface.blit(s, (int(p["pos"][0]-2), int(p["pos"][1]-2)))
 
-        # Draw Rocket body (triangle)
         points = [
             (self.x + 15 * math.cos(math.radians(self.angle)), self.y + 15 * math.sin(math.radians(self.angle))),
             (self.x + 10 * math.cos(math.radians(self.angle + 140)), self.y + 10 * math.sin(math.radians(self.angle + 140))),
             (self.x + 10 * math.cos(math.radians(self.angle - 140)), self.y + 10 * math.sin(math.radians(self.angle - 140)))
         ]
         pygame.draw.polygon(surface, (255, 255, 255), points)
-        pygame.draw.polygon(surface, (0, 150, 255), points, 2) # Neon glow outline
+        pygame.draw.polygon(surface, (0, 150, 255), points, 2)
+
+def distance(p1, p2):
+    return math.sqrt((p2[0] - p1[0])**2 + (p2[1] - p1[1])**2)

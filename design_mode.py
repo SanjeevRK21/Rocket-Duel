@@ -1,5 +1,8 @@
 import pygame
 import random
+import math
+import sqlite3
+import json
 
 class DesignMode:
     def __init__(self):
@@ -7,6 +10,7 @@ class DesignMode:
         self.goal_point = None
         self.obstacles = []
         self.current_drawing_start = None
+        self.saving = False
         try:
             self.font_main = pygame.font.SysFont("Arial", 28, bold=True)
             self.font_sub = pygame.font.SysFont("Arial", 18)
@@ -15,6 +19,16 @@ class DesignMode:
             self.font_sub = pygame.font.SysFont(None, 18)
         
         self.stars = [(random.randint(0, 800), random.randint(0, 600), random.random()) for _ in range(100)]
+
+    def save_map(self):
+        if not self.start_point or not self.goal_point: return
+        conn = sqlite3.connect('database.sqlite')
+        cursor = conn.cursor()
+        name = f"Map {random.randint(100, 999)}"
+        cursor.execute("INSERT INTO maps (name, start_point, goal_point, obstacles) VALUES (?, ?, ?, ?)",
+                       (name, json.dumps(self.start_point), json.dumps(self.goal_point), json.dumps(self.obstacles)))
+        conn.commit()
+        conn.close()
 
     def handle_event(self, event):
         if event.type == pygame.MOUSEBUTTONDOWN:
@@ -33,6 +47,9 @@ class DesignMode:
                     self.obstacles.append((self.current_drawing_start, pos))
                 self.current_drawing_start = None
         elif event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_s and not self.saving:
+                self.save_map()
+                self.saving = True
             if event.key == pygame.K_RETURN:
                 if self.start_point and self.goal_point:
                     return "PLAY"
@@ -64,8 +81,11 @@ class DesignMode:
         elif self.goal_point is None:
             instruction = "CLICK TO SET GOAL POINT"
         else:
-            instruction = "CLICK + DRAG TO DRAW OBSTACLES | PRESS ENTER TO FINISH"
+            instruction = "CLICK + DRAG TO DRAW OBSTACLES | PRESS ENTER TO FINISH | 'S' TO SAVE"
         
+        if self.saving:
+            instruction = "MAP SAVED! PRESS ENTER TO START"
+            
         inst_img = self.font_sub.render(instruction, True, (255, 255, 255))
         surface.blit(inst_img, (20, 50))
 
@@ -96,5 +116,3 @@ class DesignMode:
         if self.current_drawing_start:
             pos = pygame.mouse.get_pos()
             pygame.draw.line(surface, (255, 255, 255), self.current_drawing_start, pos, 2)
-
-import math # Ensure math is available for stars/pulses
