@@ -2,14 +2,16 @@ import pygame
 import time
 import math
 import random
+import sqlite3
 from rocket import Rocket
 from geometry import segments_intersect, distance
 
 class PlayMode:
-    def __init__(self, start_point, goal_point, obstacles):
+    def __init__(self, start_point, goal_point, obstacles, map_id=None):
         self.start_point = start_point
         self.goal_point = goal_point
         self.obstacles = obstacles
+        self.map_id = map_id
         self.rocket = Rocket(start_point[0], start_point[1])
         self.start_time = time.time()
         try:
@@ -22,10 +24,20 @@ class PlayMode:
         self.end_time = 0
         self.stars = [(random.randint(0, 800), random.randint(0, 600), random.random()) for _ in range(100)]
 
+    def save_score(self):
+        if self.map_id and self.status == "WIN":
+            conn = sqlite3.connect('database.sqlite')
+            cursor = conn.cursor()
+            cursor.execute("INSERT INTO scores (map_id, time_taken) VALUES (?, ?)",
+                           (self.map_id, self.end_time))
+            conn.commit()
+            conn.close()
+
     def handle_event(self, event):
         if self.status != "PLAYING":
             if event.type == pygame.KEYDOWN and event.key == pygame.K_RETURN:
-                return "DESIGN"
+                self.save_score()
+                return "DASHBOARD"
         return "PLAY"
 
     def update(self):
@@ -107,7 +119,7 @@ class PlayMode:
             overlay.fill((0, 255, 0, 40))
             surface.blit(overlay, (0,0))
             msg = self.font_msg.render("MISSION ACCOMPLISHED", True, (0, 255, 100))
-            sub = self.font_hud.render(f"TIME: {current_time:.2f}s | PRESS ENTER TO REPLAY", True, (255, 255, 255))
+            sub = self.font_hud.render(f"TIME: {current_time:.2f}s | PRESS ENTER TO CONTINUE", True, (255, 255, 255))
             surface.blit(msg, (400 - msg.get_width()//2, 250))
             surface.blit(sub, (400 - sub.get_width()//2, 310))
         elif self.status == "LOSS":
@@ -115,6 +127,6 @@ class PlayMode:
             overlay.fill((255, 0, 0, 40))
             surface.blit(overlay, (0,0))
             msg = self.font_msg.render("CRITICAL COLLISION", True, (255, 50, 50))
-            sub = self.font_hud.render("PILOT LOST | PRESS ENTER TO RETRY", True, (255, 255, 255))
+            sub = self.font_hud.render("PILOT LOST | PRESS ENTER TO RETURN", True, (255, 255, 255))
             surface.blit(msg, (400 - msg.get_width()//2, 250))
             surface.blit(sub, (400 - sub.get_width()//2, 310))
