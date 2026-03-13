@@ -1,7 +1,7 @@
 import sys
 import random
+import collections
 
-# ── Sound pre-init MUST happen before pygame.init() ──────────────────────────
 from sound_manager import pre_init, SoundManager
 pre_init()
 
@@ -11,14 +11,43 @@ from play_mode import PlayMode
 from dashboard import Dashboard, Leaderboard
 
 
+class FPSCounter:
+    """Lightweight rolling-average FPS display."""
+    def __init__(self, samples=30):
+        self._times  = collections.deque(maxlen=samples)
+        self._last   = pygame.time.get_ticks()
+        try:
+            self._font = pygame.font.SysFont("monospace", 14)
+        except:
+            self._font = pygame.font.SysFont(None, 14)
+        self._surf   = None
+        self._tick   = 0
+
+    def update(self):
+        now = pygame.time.get_ticks()
+        dt  = now - self._last
+        self._last = now
+        if dt > 0:
+            self._times.append(dt)
+        self._tick += 1
+        # Re-render text only every 20 frames
+        if self._tick % 20 == 0 and self._times:
+            avg_ms = sum(self._times) / len(self._times)
+            fps    = 1000.0 / avg_ms if avg_ms > 0 else 0
+            self._surf = self._font.render(f"FPS {fps:.0f}", True, (100, 255, 100))
+
+    def draw(self, surface):
+        if self._surf:
+            surface.blit(self._surf, (760 - self._surf.get_width(), 4))
+
+
 class FlashTransition:
     def __init__(self, color=(0, 180, 255), duration=18):
         self.color    = color
         self.duration = duration
         self.timer    = duration
         self.done     = False
-        # Pre-build surface
-        self._surf = pygame.Surface((800, 600))
+        self._surf    = pygame.Surface((800, 600))
         self._surf.fill(color)
 
     def update(self):
@@ -30,16 +59,16 @@ class FlashTransition:
     def draw(self, surface):
         if self.done:
             return
-        t = self.timer / self.duration
-        alpha = int(220 * t)
-        self._surf.set_alpha(max(0, min(255, alpha)))
+        t     = self.timer / self.duration
+        alpha = max(0, min(255, int(220 * t)))
+        self._surf.set_alpha(alpha)
         surface.blit(self._surf, (0, 0))
         if t > 0.5:
             for _ in range(2):
                 x1 = random.randint(50, 750)
                 y1 = random.randint(0, 150)
                 draw_lightning(surface, (x1, y1),
-                               (x1 + random.randint(-100, 100), y1 + random.randint(100, 400)),
+                               (x1+random.randint(-100, 100), y1+random.randint(100, 400)),
                                self.color, width=2, jitter=12)
 
 
@@ -48,6 +77,7 @@ def main():
     screen = pygame.display.set_mode((800, 600))
     pygame.display.set_caption("Rocket Duel – Architect vs Pilot")
     clock = pygame.time.Clock()
+    fps   = FPSCounter()
 
     snd = SoundManager()
 
@@ -66,6 +96,7 @@ def main():
 
     while True:
         clock.tick(60)
+        fps.update()
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -114,24 +145,19 @@ def main():
                 state, next_state, transition = next_state, None, None
 
         # Update
-        if state == "DESIGN":
-            design_mode.update()
-        elif state == "PLAY":
-            play_mode.update()
+        if   state == "DESIGN": design_mode.update()
+        elif state == "PLAY":   play_mode.update()
 
         # Draw
-        if state == "DASHBOARD":
-            dashboard.draw(screen)
-        elif state == "LEADERBOARD":
-            leaderboard.draw(screen)
-        elif state == "DESIGN":
-            design_mode.draw(screen)
-        elif state == "PLAY":
-            play_mode.draw(screen)
+        if   state == "DASHBOARD":   dashboard.draw(screen)
+        elif state == "LEADERBOARD": leaderboard.draw(screen)
+        elif state == "DESIGN":      design_mode.draw(screen)
+        elif state == "PLAY":        play_mode.draw(screen)
 
         if transition:
             transition.draw(screen)
 
+        fps.draw(screen)
         pygame.display.flip()
 
 
