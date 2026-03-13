@@ -9,84 +9,94 @@ class Rocket:
         self.speed = 0.0
         self.max_speed = 5.0
         self.radius = 10
-        self.color = (255, 255, 255)
-        self.angle = 0
+        self.angle = 0.0       # degrees, 0 = right, 90 = down
+        self.rot_speed = 3.0   # degrees per frame
         self.particles = []
-        self.path_taken = [(float(x), float(y))] # Trace path
+        self.path_taken = [(float(x), float(y))]
 
-    def update(self, goal_pos, dt):
-        dx = goal_pos[0] - self.x
-        dy = goal_pos[1] - self.y
-        dist = math.sqrt(dx**2 + dy**2)
-        
-        if dist > 0:
-            dir_x = dx / dist
-            dir_y = dy / dist
-            self.angle = math.degrees(math.atan2(dy, dx))
-        else:
-            dir_x, dir_y = 1, 0
-
-        # Automatic forward movement toward goal based on speed
-        self.x += dir_x * self.speed
-        self.y += dir_y * self.speed
-        
-        # Track path if moved significantly
-        if distance((self.x, self.y), self.path_taken[-1]) > 2:
-            self.path_taken.append((self.x, self.y))
-
-        # Player vertical adjustments and speed control
+    def update(self, dt):
         keys = pygame.key.get_pressed()
-        if keys[pygame.K_UP]:
-            self.y -= 4.0
-        if keys[pygame.K_DOWN]:
-            self.y += 4.0
+
+        # A = anticlockwise (decrease angle), D = clockwise (increase angle)
+        if keys[pygame.K_a]:
+            self.angle -= self.rot_speed
+        if keys[pygame.K_d]:
+            self.angle += self.rot_speed
+
+        # RIGHT = accelerate, LEFT = decelerate
         if keys[pygame.K_RIGHT]:
-            self.speed += 0.2
+            self.speed += 0.15
             if self.speed > self.max_speed:
                 self.speed = self.max_speed
         if keys[pygame.K_LEFT]:
-            self.speed -= 0.2
+            self.speed -= 0.15
             if self.speed < 0:
                 self.speed = 0
 
-        # Particle logic (visual only)
-        if self.speed > 0.5:
-            for _ in range(int(self.speed)):
-                px = self.x - dir_x * 12 + random.uniform(-3, 3)
-                py = self.y - dir_y * 12 + random.uniform(-3, 3)
+        # Move in direction rocket is facing
+        rad = math.radians(self.angle)
+        dir_x = math.cos(rad)
+        dir_y = math.sin(rad)
+        self.x += dir_x * self.speed
+        self.y += dir_y * self.speed
+
+        # Record path
+        if len(self.path_taken) == 0 or _dist((self.x, self.y), self.path_taken[-1]) > 3:
+            self.path_taken.append((self.x, self.y))
+
+        # Flame particles emitted behind the rocket
+        if self.speed > 0.3:
+            count = max(1, int(self.speed * 1.5))
+            for _ in range(count):
+                px = self.x - dir_x * 13 + random.uniform(-4, 4)
+                py = self.y - dir_y * 13 + random.uniform(-4, 4)
+                speed_factor = 1.0 + self.speed * 0.3
                 self.particles.append({
                     "pos": [px, py],
-                    "vel": [-dir_x * 2, -dir_y * 2],
+                    "vel": [-dir_x * speed_factor + random.uniform(-0.5, 0.5),
+                            -dir_y * speed_factor + random.uniform(-0.5, 0.5)],
                     "life": 1.0,
-                    "color": random.choice([(255, 100, 0), (255, 200, 0), (255, 50, 0)])
+                    "color": random.choice([(255, 100, 0), (255, 200, 0), (0, 200, 255), (200, 50, 255)])
                 })
-        
+
         for p in self.particles[:]:
             p["pos"][0] += p["vel"][0]
             p["pos"][1] += p["vel"][1]
-            p["life"] -= 0.05
+            p["life"] -= 0.06
             if p["life"] <= 0:
                 self.particles.remove(p)
 
     def draw(self, surface):
-        # Draw path trace
+        # Draw path trace with electric cyan
         if len(self.path_taken) > 1:
-            pygame.draw.lines(surface, (0, 255, 255), False, self.path_taken, 1)
+            pygame.draw.lines(surface, (0, 180, 255), False, self.path_taken, 1)
 
-        # Draw particles
+        # Particles
         for p in self.particles:
-            alpha = int(p["life"] * 255)
-            s = pygame.Surface((4, 4), pygame.SRCALPHA)
-            pygame.draw.circle(s, (*p["color"], alpha), (2, 2), 2)
-            surface.blit(s, (int(p["pos"][0]-2), int(p["pos"][1]-2)))
+            alpha = int(max(0, min(255, p["life"] * 255)))
+            s = pygame.Surface((6, 6), pygame.SRCALPHA)
+            pygame.draw.circle(s, (*p["color"], alpha), (3, 3), 3)
+            surface.blit(s, (int(p["pos"][0] - 3), int(p["pos"][1] - 3)))
 
-        points = [
-            (self.x + 15 * math.cos(math.radians(self.angle)), self.y + 15 * math.sin(math.radians(self.angle))),
-            (self.x + 10 * math.cos(math.radians(self.angle + 140)), self.y + 10 * math.sin(math.radians(self.angle + 140))),
-            (self.x + 10 * math.cos(math.radians(self.angle - 140)), self.y + 10 * math.sin(math.radians(self.angle - 140)))
+        # Rocket body as triangle pointing in angle direction
+        rad = math.radians(self.angle)
+        tip = (self.x + 15 * math.cos(rad), self.y + 15 * math.sin(rad))
+        left = (self.x + 10 * math.cos(rad + math.radians(140)),
+                self.y + 10 * math.sin(rad + math.radians(140)))
+        right = (self.x + 10 * math.cos(rad - math.radians(140)),
+                 self.y + 10 * math.sin(rad - math.radians(140)))
+
+        # Outer glow (electric blue)
+        glow_pts = [
+            (tip[0] + 2*math.cos(rad), tip[1] + 2*math.sin(rad)),
+            (left[0], left[1]),
+            (right[0], right[1])
         ]
-        pygame.draw.polygon(surface, (255, 255, 255), points)
-        pygame.draw.polygon(surface, (0, 150, 255), points, 2)
+        pygame.draw.polygon(surface, (0, 100, 255), glow_pts, 3)
+        # Body
+        pygame.draw.polygon(surface, (220, 240, 255), [tip, left, right])
+        pygame.draw.polygon(surface, (0, 200, 255), [tip, left, right], 2)
 
-def distance(p1, p2):
-    return math.sqrt((p2[0] - p1[0])**2 + (p2[1] - p1[1])**2)
+
+def _dist(p1, p2):
+    return math.sqrt((p2[0]-p1[0])**2 + (p2[1]-p1[1])**2)
