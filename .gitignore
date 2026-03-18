@@ -1,6 +1,20 @@
-node_modules
-dist
-.DS_Store
-server/public
-vite.config.ts.*
-*.tar.gz
+# Python
+__pycache__/
+*.pyc
+.agents
+
+# Environment / local
+.local/
+.env
+
+# Database
+*.sqlite
+
+# Node
+node_modules/
+
+# Replit
+.replit
+
+# Misc
+uv.lock
