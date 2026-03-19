@@ -233,7 +233,7 @@ rocket-duel/
 ### 1️. Clone the repository
 
 ```bash
-git clone https://github.com/your-username/rocket-duel.git
+git clone https://github.com/SanjeevRK21/Rocket-Duel.git
 cd rocket-duel
 ```
 
